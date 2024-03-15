@@ -70,21 +70,21 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit()
-
-    screen.fill("black")
-
-    # draw grid
-    draw_grid(bubble.elements, grid_pos)
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_ESCAPE:
+                quit()
+            if event.key == pygame.K_RETURN:
+                bubble.reset()
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_ESCAPE]:
-        quit()
     if keys[pygame.K_SPACE]:
         success = bubble.step()
         if success:
             play_beep()
-    if keys[pygame.K_RETURN]:
-        bubble.reset()
+
+    # Draw
+    screen.fill("black")
+    draw_grid(bubble.elements, grid_pos)
 
     pygame.display.flip()
     dt = clock.tick(144) / 1000
