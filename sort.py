@@ -9,7 +9,7 @@ pygame.init()
 
 beep = pygame.mixer.Sound("beep.wav")
 beep.set_volume(0.05)
-screen = pygame.display.set_mode((700, 700))
+screen = pygame.display.set_mode((1280, 780))
 pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
 
 clock = pygame.time.Clock()
@@ -46,8 +46,10 @@ class BubbleSort:
             elements[i - 1], elements[i] = elements[i], elements[i - 1]
             swapped = True
             self.dirties = [i, i - 1]
-
         self.index_step += 1
+
+        if not swapped:
+            return self.step()
         return swapped
 
     def finish(self):
@@ -79,7 +81,7 @@ class Grid:
         left = self.size.y / total
         offset = self.size.y
 
-        width = math.ceil(top) - 2
+        width = math.trunc(top) - 1
         height = math.ceil(left)
 
         if width < 1:
@@ -89,26 +91,21 @@ class Grid:
         self.surface.fill(color, pos)
 
     def draw(self, elements, indexes_dirty, finished):
+        for d in self.last_dirty_indexes:
+            self.draw_index(d, len(elements), elements[d], "white")
+        self.last_dirty_indexes = []
         if indexes_dirty:
-            for d in self.last_dirty_indexes:
-                self.draw_index(d, len(elements), len(elements), "black")
-                self.draw_index(d, len(elements), elements[d], "white")
-            self.last_dirty_indexes = []
             for d in indexes_dirty:
                 self.draw_index(d, len(elements), len(elements), "black")
                 self.draw_index(d, len(elements), elements[d], "red")
-                self.draw_index(d-1, len(elements), len(elements), "black")
-                self.draw_index(d-1, len(elements), elements[d-1], "white")
-                self.last_dirty_indexes.append(d)
-            self.screen.blit(self.surface, self.pos)
-            return
-
-        self.surface.fill("black")
-        for i, element in enumerate(elements):
-            color = "white"
-            if finished:
-                color = "green"
-            self.draw_index(i, len(elements), element, color)
+            self.last_dirty_indexes = indexes_dirty.copy()
+        else:
+            self.surface.fill("black")
+            for i, element in enumerate(elements):
+                color = "white"
+                if finished:
+                    color = "green"
+                self.draw_index(i, len(elements), element, color)
         self.screen.blit(self.surface, self.pos)
 
 
