@@ -9,7 +9,7 @@ pygame.init()
 
 beep = pygame.mixer.Sound("beep.wav")
 beep.set_volume(0.05)
-screen = pygame.display.set_mode((1280, 720))
+screen = pygame.display.set_mode((700, 700))
 pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
 
 clock = pygame.time.Clock()
@@ -70,29 +70,45 @@ class Grid:
     def __init__(self, pos, size, screen):
         self.pos = pos
         self.size = size
-        self.surface = pygame.Surface(self.size)
         self.screen = screen
+        self.surface = pygame.Surface(self.size)
+        self.last_dirty_indexes = []
 
-    def draw(self, elements, indexes_dirty, finished):
-        self.surface.fill("black")
-
-        top = self.size.x / len(elements)
-        left = self.size.y / len(elements)
+    def draw_index(self, index, total, element, color):
+        top = self.size.x / total
+        left = self.size.y / total
         offset = self.size.y
 
-        width = math.floor(top) - 1 if top - 1 > 1 else 1
-        height = math.ceil(left) if left > 1 else 1
+        width = math.ceil(top) - 2
+        height = math.ceil(left)
 
+        if width < 1:
+            width = 1
+
+        pos = pygame.Rect(index * top, offset - (element * left), width, height * element)
+        self.surface.fill(color, pos)
+
+    def draw(self, elements, indexes_dirty, finished):
+        if indexes_dirty:
+            for d in self.last_dirty_indexes:
+                self.draw_index(d, len(elements), len(elements), "black")
+                self.draw_index(d, len(elements), elements[d], "white")
+            self.last_dirty_indexes = []
+            for d in indexes_dirty:
+                self.draw_index(d, len(elements), len(elements), "black")
+                self.draw_index(d, len(elements), elements[d], "red")
+                self.draw_index(d-1, len(elements), len(elements), "black")
+                self.draw_index(d-1, len(elements), elements[d-1], "white")
+                self.last_dirty_indexes.append(d)
+            self.screen.blit(self.surface, self.pos)
+            return
+
+        self.surface.fill("black")
         for i, element in enumerate(elements):
-            pos = pygame.Rect(i * top, offset - (element * left), width, height * element)
+            color = "white"
             if finished:
-                self.surface.fill("green", pos)
-                continue
-            if i in indexes_dirty:
-                self.surface.fill("blue", pos)
-            else:
-                self.surface.fill("white", pos)
-
+                color = "green"
+            self.draw_index(i, len(elements), element, color)
         self.screen.blit(self.surface, self.pos)
 
 
@@ -117,6 +133,12 @@ while running:
                 play = False
             if event.key == pygame.K_SPACE:
                 play = not play
+            if event.key == pygame.K_n:
+                bubble.step()
+            if event.key == pygame.K_BACKSPACE:
+                play = False
+                elements = list(range(1, TOTAL))
+                bubble = BubbleSort(elements)
 
     if play:
         t = bubble.step()
@@ -130,6 +152,5 @@ while running:
     grid.draw(bubble.elements, bubble.dirties, bubble.finished)
 
     pygame.display.flip()
-    # dt = clock.tick(144) / 1000
 
 pygame.quit()
