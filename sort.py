@@ -5,7 +5,7 @@ import sys
 import pygame
 
 RUNNING = True
-TOTAL = 170
+TOTAL = 128
 START = 1
 
 
@@ -33,7 +33,7 @@ class Bar:
         self.surface.blit(title, self.title_pos)
 
         meta_text = self.text.render(meta, True, "white")
-        meta_pos = pygame.Vector2(self.title_pos.x + title.get_width() + 2, self.title_pos.y)
+        meta_pos = pygame.Vector2(self.title_pos.x + title.get_width() + 4, self.title_pos.y)
         self.surface.blit(meta_text, meta_pos)
 
         self.screen.blit(self.surface, self.pos)
@@ -57,7 +57,6 @@ class BubbleSort:
 
     def step(self):
         self.dirty_index = []
-        self.step_count += 1
 
         if self.finished:
             return False
@@ -79,6 +78,7 @@ class BubbleSort:
             self.dirty_index.append(il)
         self.index_step += 1
 
+        self.step_count += 1
         return True
 
     def finish(self):
@@ -108,8 +108,8 @@ class Grid:
         top = self.size.x / total
         left = self.size.y / total
 
-        width = math.trunc(top) - self.margin
-        height = left * element
+        width = top - 1
+        height = math.ceil(left) * element
 
         if width < 1:
             width = 1
@@ -146,6 +146,7 @@ beep.set_volume(0.05)
 screen = pygame.display.set_mode((1280, 780))
 pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
 
+TOTAL +=1
 elements = list(range(START, TOTAL))
 bubble = BubbleSort(elements)
 play = False
