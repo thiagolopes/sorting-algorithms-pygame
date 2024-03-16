@@ -11,6 +11,7 @@ RUNNING = True
 START = 0
 TOTAL = 128
 ELEMENTS = list(range(START, TOTAL))
+TAU = math.pi * 2
 
 
 def quit():
@@ -177,17 +178,21 @@ time = 0
 
 
 # beep logic
-TAU = math.pi * 2
 def new_beeps(elements):
     "Generate one sample per index"
+    volume = 0.05
     sample_rate = 44100  # CD
     duration = 0.05
-    samples = []
+
+    sounds = []
     for i in range(len(elements)):
         fz = 440 + pow(i, 2)
-        waves = array.array("f", [math.sin(TAU * fz * sample / sample_rate) for sample in range(int(duration * sample_rate))])
-        samples.append(waves)
-    return [pygame.mixer.Sound(buffer=sample) for sample in samples]
+        samples = array.array("f", [math.sin(TAU * fz * sample / sample_rate)
+                                    for sample in range(int(duration * sample_rate))])
+        sound = pygame.mixer.Sound(buffer=samples)
+        sound.set_volume(volume)
+        sounds.append(sound)
+    return sounds
 
 
 beeps = new_beeps(ELEMENTS)
