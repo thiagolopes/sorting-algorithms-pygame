@@ -1,3 +1,4 @@
+import array
 import math
 import random
 import sys
@@ -8,7 +9,7 @@ W = 780
 H = 1280
 RUNNING = True
 START = 0
-TOTAL = 64
+TOTAL = 128
 ELEMENTS = list(range(START, TOTAL))
 
 
@@ -16,10 +17,6 @@ def quit():
     print(ELEMENTS)
     pygame.quit()
     sys.exit()
-
-
-def play_beep():
-    pygame.mixer.Sound.play(beep)
 
 
 class Bar:
@@ -103,12 +100,15 @@ class Grid:
 class BubbleSort:
     def __init__(self, elements):
         self.elements = elements
+        self.finished = True
+        self.start_bubble()
+
+        self.step_count = 0
+
+    def start_bubble(self):
         self.steps_left = len(self.elements) - 1
         self.index_step = 0
         self.dirty_index = []
-        self.finished = True
-
-        self.step_count = 0
 
     def __str__(self):
         return "Bubble Sort"
@@ -148,15 +148,14 @@ class BubbleSort:
         self.finished = True
 
     def reset(self):
-        self.steps_left = len(self.elements) - 1
-        self.index_step = 0
-        self.dirty_index = []
+        self.start_bubble()
         self.finished = False
         self.step_count = 0
         random.shuffle(self.elements)
 
 
 pygame.init()
+pygame.mixer.init()
 beep = pygame.mixer.Sound("beep.wav")
 beep.set_volume(0.05)
 screen = pygame.display.set_mode((H, W))
@@ -175,6 +174,23 @@ bar_pos = pygame.Rect(0, 0, screen.get_width(), bar_size)
 bar = Bar(bar_pos, screen)
 
 time = 0
+
+
+# beep logic
+TAU = math.pi * 2
+def new_beeps(elements):
+    "Generate one sample per index"
+    sample_rate = 44100  # CD
+    duration = 0.05
+    samples = []
+    for i in range(len(elements)):
+        fz = 440 + pow(i, 2)
+        waves = array.array("f", [math.sin(TAU * fz * sample / sample_rate) for sample in range(int(duration * sample_rate))])
+        samples.append(waves)
+    return [pygame.mixer.Sound(buffer=sample) for sample in samples]
+
+
+beeps = new_beeps(ELEMENTS)
 while RUNNING:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -210,7 +226,8 @@ while RUNNING:
         start_time = pygame.time.get_ticks()
         t = bubble.step()
         if t:
-            play_beep()
+            for d in bubble.dirty_index:
+                beeps[d].play()
 
     # Draw
     grid.draw(bubble.elements, bubble.dirty_index, bubble.finished)
