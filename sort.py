@@ -1,11 +1,11 @@
-import sys
+import math
 import random
+import sys
 
 import pygame
-from pygame import Vector2
 
 RUNNING = True
-TOTAL = 128
+TOTAL = 170
 START = 1
 
 
@@ -18,6 +18,27 @@ def play_beep():
     pygame.mixer.Sound.play(beep)
 
 
+class Bar:
+    def __init__(self, pos, screen):
+        self.pos = pos
+        self.screen = screen
+        self.surface = pygame.Surface(pygame.Vector2(pos.w, pos.h))
+        self.text = pygame.font.SysFont("Monospace", 18)
+
+        self.title_pos = pygame.Vector2(2, 0)
+
+    def draw(self, algorithm, meta):
+        self.surface.fill("dimgray", self.pos)
+        title = self.text.render(algorithm, True, "green")
+        self.surface.blit(title, self.title_pos)
+
+        meta_text = self.text.render(meta, True, "white")
+        meta_pos = pygame.Vector2(self.title_pos.x + title.get_width() + 2, self.title_pos.y)
+        self.surface.blit(meta_text, meta_pos)
+
+        self.screen.blit(self.surface, self.pos)
+
+
 class BubbleSort:
     def __init__(self, elements):
         self.elements = elements
@@ -26,8 +47,18 @@ class BubbleSort:
         self.dirty_index = []
         self.finished = True
 
+        self.step_count = 0
+
+    def __str__(self):
+        return "Bubble Sort"
+
+    def __repr__(self):
+        return f"< Finished: {self.finished} | Step count: {self.step_count} | Time Lapse: TODO >"
+
     def step(self):
         self.dirty_index = []
+        self.step_count += 1
+
         if self.finished:
             return False
 
@@ -59,11 +90,12 @@ class BubbleSort:
         self.index_step = START
         self.dirty_index = []
         self.finished = False
+        self.step_count = 0
         random.shuffle(self.elements)
 
 
 class Grid:
-    margin = 2
+    margin = 1
 
     def __init__(self, pos, size, screen):
         self.pos = pos
@@ -73,10 +105,10 @@ class Grid:
         self.last_dirty_indexes = []
 
     def draw_index(self, index, total, element, color):
-        top = self.size.x // total
-        left = self.size.y // total
+        top = self.size.x / total
+        left = self.size.y / total
 
-        width = top - self.margin
+        width = math.trunc(top) - self.margin
         height = left * element
 
         if width < 1:
@@ -118,10 +150,14 @@ elements = list(range(START, TOTAL))
 bubble = BubbleSort(elements)
 play = False
 
+bar_size = 24
 grid_gap = 10
-grid_pos = Vector2(grid_gap / 2, grid_gap / 2)
-grid_size = Vector2(screen.get_width() - grid_gap, screen.get_height() - grid_gap)
+grid_pos = pygame.Vector2(0, bar_size)
+grid_size = pygame.Vector2(screen.get_width(), screen.get_height() - bar_size)
 grid = Grid(grid_pos, grid_size, screen)
+
+bar_pos = pygame.Rect(0, 0, screen.get_width(), bar_size)
+bar = Bar(bar_pos, screen)
 
 while RUNNING:
     for event in pygame.event.get():
@@ -155,8 +191,8 @@ while RUNNING:
         play = False
 
     # Draw
-    screen.fill("black")
     grid.draw(bubble.elements, bubble.dirty_index, bubble.finished)
+    bar.draw(str(bubble), repr(bubble))
 
     pygame.display.flip()
 
