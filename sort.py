@@ -12,9 +12,9 @@ beep.set_volume(0.05)
 screen = pygame.display.set_mode((1280, 780))
 pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
 
-clock = pygame.time.Clock()
-running = True
-dt = 0
+RUNNING = True
+TOTAL = 128
+START = 1
 
 
 def quit():
@@ -30,18 +30,21 @@ class BubbleSort:
     def __init__(self, elements):
         self.elements = elements
         self.steps_left = len(self.elements)
-        self.index_step = 1
+        self.index_step = START
         self.dirty_index = []
         self.finished = True
 
     def step(self):
         self.dirty_index = []
+        if self.finished:
+            return False
+
         if self.steps_left == 0:
             self.finish()
             return False
 
         if self.index_step == self.steps_left:
-            self.index_step = 1
+            self.index_step = START
             self.steps_left -= 1
             return False
 
@@ -61,9 +64,9 @@ class BubbleSort:
 
     def reset(self):
         self.steps_left = len(self.elements)
-        self.index_step = 1
+        self.index_step = START
         self.finished = False
-        self.dirty = []
+        self.dirty_index = []
         shuffle(self.elements)
 
 
@@ -113,16 +116,16 @@ class Grid:
         self.screen.blit(self.surface, self.pos)
 
 
-TOTAL = 128
-elements = list(range(1, TOTAL))
+elements = list(range(START, TOTAL))
 bubble = BubbleSort(elements)
 play = False
 
-grid_pos = Vector2(5, 5)
-grid_size = Vector2(screen.get_width() - 10, screen.get_height() - 10)
+grid_gap = 10
+grid_pos = Vector2(grid_gap / 2, grid_gap / 2)
+grid_size = Vector2(screen.get_width() - grid_gap, screen.get_height() - grid_gap)
 grid = Grid(grid_pos, grid_size, screen)
 
-while running:
+while RUNNING:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit()
@@ -130,8 +133,8 @@ while running:
             if event.key == pygame.K_ESCAPE:
                 quit()
             if event.key == pygame.K_RETURN:
-                bubble.reset()
                 play = False
+                bubble.reset()
             if event.key == pygame.K_SPACE:
                 play = not play
             if event.key == pygame.K_n:
