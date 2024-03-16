@@ -1,6 +1,5 @@
-import math
 import sys
-from random import shuffle
+import random
 
 import pygame
 from pygame import Vector2
@@ -67,7 +66,7 @@ class BubbleSort:
         self.index_step = START
         self.finished = False
         self.dirty_index = []
-        shuffle(self.elements)
+        random.shuffle(self.elements)
 
 
 class Grid:
@@ -79,17 +78,16 @@ class Grid:
         self.last_dirty_indexes = []
 
     def draw_index(self, index, total, element, color):
-        top = self.size.x / total
-        left = self.size.y / total
-        offset = self.size.y
+        top = self.size.x // total
+        left = self.size.y // total
 
-        width = math.trunc(top) - 1
-        height = math.ceil(left)
+        width = top - 1
+        height = left
 
         if width < 1:
             width = 1
 
-        pos = pygame.Rect(index * top, offset - (element * left), width, height * element)
+        pos = pygame.Rect(index * top, self.size.y - (element * left), width, height * element)
         self.surface.fill(color, pos)
 
     def draw_clear_last_indexes(self):
@@ -141,8 +139,13 @@ while RUNNING:
                 bubble.step()
             if event.key == pygame.K_BACKSPACE:
                 play = False
-                elements = list(range(1, TOTAL))
+                elements = list(range(START, TOTAL))
                 bubble = BubbleSort(elements)
+            if event.key == pygame.K_r:
+                play = False
+                elements = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
+                bubble = BubbleSort(elements)
+                bubble.finished = False
 
     if play:
         t = bubble.step()
