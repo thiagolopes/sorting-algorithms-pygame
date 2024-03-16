@@ -27,20 +27,27 @@ class Bar:
         self.pos = pos
         self.screen = screen
         self.surface = pygame.Surface(pygame.Vector2(pos.w, pos.h))
-        self.text = pygame.font.SysFont("Monospace", 18, True)
+        self.text = pygame.font.SysFont("Monospace", 18, False)
+        self.textb = pygame.font.SysFont("Monospace", 18, True)
 
         self.margin = 8
         self.init_pos = pygame.Vector2(2, 0)
 
-    def draw_next_text(self, text, pos, color):
-        ts = self.text.render(text, True, color)
+    def draw_next_text(self, text, pos, color, bold=False):
+        if bold:
+            text_render = self.textb.render
+        else:
+            text_render = self.text.render
+
+        ts = text_render(text, True, color)
         self.surface.blit(ts, pos)
         pos += pygame.Vector2(ts.get_width() + self.margin, 0)
 
     def draw(self, algorithm, meta, ms):
-        self.surface.fill("dimgray", self.pos)
+        self.surface.fill("darkmagenta", self.pos)
+
         pos = self.init_pos.copy()
-        self.draw_next_text(algorithm, pos, "green")
+        self.draw_next_text(algorithm, pos, "white", True)
         self.draw_next_text(meta, pos, "white")
         self.draw_next_text(f"{ms} ms", pos, "white")
 
@@ -107,7 +114,7 @@ class BubbleSort:
         return "Bubble Sort"
 
     def __repr__(self):
-        return f"< Finished: {self.finished} | Step count: {self.step_count} >"
+        return f"< Finished: {self.finished} | Step count: {self.step_count} | Total: {len(self.elements)} >"
 
     def step(self):
         self.dirty_index = []
@@ -153,7 +160,7 @@ pygame.init()
 beep = pygame.mixer.Sound("beep.wav")
 beep.set_volume(0.05)
 screen = pygame.display.set_mode((H, W))
-pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
+pygame.display.set_caption("Sorting Algorithms")
 
 bubble = BubbleSort(ELEMENTS)
 play = False

@@ -1,7 +1,7 @@
 Video 1: https://www.youtube.com/watch?v=pXIVzfX-9vs
 
-![image](https://github.com/thiagolopes/sorting-algorithms-pygame/assets/5994972/f66e273f-2c9c-4b35-a8da-8505684924cf)
-![image](https://github.com/thiagolopes/sorting-algorithms-pygame/assets/5994972/572b4c8a-f83e-4fd2-b1a8-9998bb7c1035)
+![image](https://github.com/thiagolopes/sorting-algorithms-pygame/assets/5994972/ea0b3327-6431-44f6-a0a1-eac65a8b612e)
+![image](https://github.com/thiagolopes/sorting-algorithms-pygame/assets/5994972/6b98500c-0ed3-464b-9ad6-bc7303bbc547)
 
 References:
 - PyGame Docs - (https://www.pygame.org/docs/)
