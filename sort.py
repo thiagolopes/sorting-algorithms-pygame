@@ -22,15 +22,20 @@ def quit():
     sys.exit()
 
 
+def play_beep():
+    pygame.mixer.Sound.play(beep)
+
+
 class BubbleSort:
     def __init__(self, elements):
         self.elements = elements
         self.steps_left = len(self.elements)
         self.index_step = 1
-        self.dirties = []
+        self.dirty_index = []
         self.finished = True
 
     def step(self):
+        self.dirty_index = []
         if self.steps_left == 0:
             self.finish()
             return False
@@ -41,31 +46,25 @@ class BubbleSort:
             return False
 
         i = self.index_step
-        swapped = False
-        if elements[i - 1] > elements[i]:
-            elements[i - 1], elements[i] = elements[i], elements[i - 1]
-            swapped = True
-            self.dirties = [i, i - 1]
+        il = self.index_step - 1
+        self.dirty_index.append(i)
+        if elements[il] > elements[i]:
+            elements[il], elements[i] = elements[i], elements[il]
+            self.dirty_index.append(il)
         self.index_step += 1
 
-        if not swapped:
-            return self.step()
-        return swapped
+        return True
 
     def finish(self):
-        self.dirties = []
+        self.dirty = []
         self.finished = True
 
     def reset(self):
         self.steps_left = len(self.elements)
         self.index_step = 1
         self.finished = False
-        self.dirties = []
+        self.dirty = []
         shuffle(self.elements)
-
-
-def play_beep():
-    pygame.mixer.Sound.play(beep)
 
 
 class Grid:
@@ -90,15 +89,19 @@ class Grid:
         pos = pygame.Rect(index * top, offset - (element * left), width, height * element)
         self.surface.fill(color, pos)
 
-    def draw(self, elements, indexes_dirty, finished):
-        for d in self.last_dirty_indexes:
-            self.draw_index(d, len(elements), elements[d], "white")
+    def draw_clear_last_indexes(self):
+        for ld in self.last_dirty_indexes:
+            self.draw_index(ld, len(elements), elements[ld], "white")
         self.last_dirty_indexes = []
-        if indexes_dirty:
-            for d in indexes_dirty:
+
+    def draw(self, elements, dirty_index, finished):
+        self.draw_clear_last_indexes()
+
+        if dirty_index:
+            for d in dirty_index:
                 self.draw_index(d, len(elements), len(elements), "black")
                 self.draw_index(d, len(elements), elements[d], "red")
-            self.last_dirty_indexes = indexes_dirty.copy()
+            self.last_dirty_indexes = dirty_index.copy()
         else:
             self.surface.fill("black")
             for i, element in enumerate(elements):
@@ -106,6 +109,7 @@ class Grid:
                 if finished:
                     color = "green"
                 self.draw_index(i, len(elements), element, color)
+
         self.screen.blit(self.surface, self.pos)
 
 
@@ -146,7 +150,7 @@ while running:
 
     # Draw
     screen.fill("black")
-    grid.draw(bubble.elements, bubble.dirties, bubble.finished)
+    grid.draw(bubble.elements, bubble.dirty_index, bubble.finished)
 
     pygame.display.flip()
 
