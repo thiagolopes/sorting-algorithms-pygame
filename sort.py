@@ -4,13 +4,6 @@ import random
 import pygame
 from pygame import Vector2
 
-pygame.init()
-
-beep = pygame.mixer.Sound("beep.wav")
-beep.set_volume(0.05)
-screen = pygame.display.set_mode((1280, 780))
-pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
-
 RUNNING = True
 TOTAL = 128
 START = 1
@@ -64,12 +57,14 @@ class BubbleSort:
     def reset(self):
         self.steps_left = len(self.elements)
         self.index_step = START
-        self.finished = False
         self.dirty_index = []
+        self.finished = False
         random.shuffle(self.elements)
 
 
 class Grid:
+    margin = 2
+
     def __init__(self, pos, size, screen):
         self.pos = pos
         self.size = size
@@ -81,19 +76,18 @@ class Grid:
         top = self.size.x // total
         left = self.size.y // total
 
-        width = top - 1
-        height = left
+        width = top - self.margin
+        height = left * element
 
         if width < 1:
             width = 1
 
-        pos = pygame.Rect(index * top, self.size.y - (element * left), width, height * element)
+        pos = pygame.Rect(index * top, self.size.y - (element * left), width, height)
         self.surface.fill(color, pos)
 
     def draw_clear_last_indexes(self):
         for ld in self.last_dirty_indexes:
             self.draw_index(ld, len(elements), elements[ld], "white")
-        self.last_dirty_indexes = []
 
     def draw(self, elements, dirty_index, finished):
         self.draw_clear_last_indexes()
@@ -113,6 +107,12 @@ class Grid:
 
         self.screen.blit(self.surface, self.pos)
 
+
+pygame.init()
+beep = pygame.mixer.Sound("beep.wav")
+beep.set_volume(0.05)
+screen = pygame.display.set_mode((1280, 780))
+pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
 
 elements = list(range(START, TOTAL))
 bubble = BubbleSort(elements)
@@ -143,7 +143,7 @@ while RUNNING:
                 bubble = BubbleSort(elements)
             if event.key == pygame.K_r:
                 play = False
-                elements = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
+                elements = [random.randint(START, TOTAL - 1) for _ in range(START, TOTAL)]
                 bubble = BubbleSort(elements)
                 bubble.finished = False
 
