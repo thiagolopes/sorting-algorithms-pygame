@@ -63,7 +63,7 @@ class Grid:
         self.last_dirty_indexes = []
 
     def draw_index(self, index, total, element, color):
-        top = self.size.x / total
+        top = self.size.x // total
         left = self.size.y / total
 
         width = top - 1
