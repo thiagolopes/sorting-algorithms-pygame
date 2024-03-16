@@ -5,11 +5,13 @@ import sys
 import pygame
 
 RUNNING = True
-TOTAL = 128
-START = 1
+START = 0
+TOTAL = 64
+elements = list(range(START, TOTAL))
 
 
 def quit():
+    print(elements)
     pygame.quit()
     sys.exit()
 
@@ -42,8 +44,8 @@ class Bar:
 class BubbleSort:
     def __init__(self, elements):
         self.elements = elements
-        self.steps_left = len(self.elements)
-        self.index_step = START
+        self.steps_left = len(self.elements) - 1
+        self.index_step = 0
         self.dirty_index = []
         self.finished = True
 
@@ -66,18 +68,18 @@ class BubbleSort:
             return False
 
         if self.index_step == self.steps_left:
-            self.index_step = START
+            self.index_step = 0
             self.steps_left -= 1
             return False
 
         i = self.index_step
-        il = self.index_step - 1
+        il = i + 1
         self.dirty_index.append(i)
-        if elements[il] > elements[i]:
+        if elements[i] > elements[il]:
             elements[il], elements[i] = elements[i], elements[il]
             self.dirty_index.append(il)
-        self.index_step += 1
 
+        self.index_step += 1
         self.step_count += 1
         return True
 
@@ -86,8 +88,8 @@ class BubbleSort:
         self.finished = True
 
     def reset(self):
-        self.steps_left = len(self.elements)
-        self.index_step = START
+        self.steps_left = len(self.elements) - 1
+        self.index_step = 0
         self.dirty_index = []
         self.finished = False
         self.step_count = 0
@@ -146,8 +148,6 @@ beep.set_volume(0.05)
 screen = pygame.display.set_mode((1280, 780))
 pygame.display.set_caption("Bubble sort - <space> sort, <enter> reset")
 
-TOTAL +=1
-elements = list(range(START, TOTAL))
 bubble = BubbleSort(elements)
 play = False
 
@@ -180,7 +180,7 @@ while RUNNING:
                 bubble = BubbleSort(elements)
             if event.key == pygame.K_r:
                 play = False
-                elements = [random.randint(START, TOTAL - 1) for _ in range(START, TOTAL)]
+                elements = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
                 bubble = BubbleSort(elements)
                 bubble.finished = False
 
@@ -197,4 +197,4 @@ while RUNNING:
 
     pygame.display.flip()
 
-pygame.quit()
+quit()
