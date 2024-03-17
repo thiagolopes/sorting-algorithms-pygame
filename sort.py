@@ -12,6 +12,7 @@ START = 0
 TOTAL = 128
 ELEMENTS = list(range(START, TOTAL))
 TAU = math.pi * 2
+MUTED = False
 
 
 def quit():
@@ -28,8 +29,11 @@ class Bar:
         self.text = pygame.font.SysFont("Monospace", 18, False)
         self.textb = pygame.font.SysFont("Monospace", 18, True)
 
+        border_size = 2
+        self.border = pygame.Rect(pos.x + border_size, pos.y + border_size,
+                                  pos.width - (border_size * 2), pos.height - (border_size * 2))
         self.margin = 8
-        self.init_pos = pygame.Vector2(2, 0)
+        self.init_pos = pygame.Vector2(self.margin, border_size)
 
     def draw_next_text(self, text, pos, color, bold=False):
         if bold:
@@ -42,12 +46,15 @@ class Bar:
         pos += pygame.Vector2(ts.get_width() + self.margin, 0)
 
     def draw(self, algorithm, meta, ms):
-        self.surface.fill("darkmagenta", self.pos)
+        self.surface.fill("darkorchid", self.pos)
+        self.surface.fill("darkmagenta", self.border)
 
         pos = self.init_pos.copy()
         self.draw_next_text(algorithm, pos, "white", True)
-        self.draw_next_text(meta, pos, "white")
-        self.draw_next_text(f"{ms} ms", pos, "white")
+        self.draw_next_text("- " + meta, pos, "white")
+        self.draw_next_text(f"| {ms} (ms)", pos, "white")
+        if MUTED:
+            self.draw_next_text("|[MUTED]", pos, "white")
 
         self.screen.blit(self.surface, self.pos)
 
@@ -115,7 +122,7 @@ class BubbleSort:
         return "Bubble Sort"
 
     def __repr__(self):
-        return f"< Finished: {self.finished} | Step count: {self.step_count} | Total: {len(self.elements)} >"
+        return f"Finished: {self.finished} | Step count: {self.step_count} | Total: {len(self.elements)}"
 
     def step(self):
         self.dirty_index = []
@@ -183,10 +190,11 @@ def new_beeps(elements):
     volume = 0.05
     sample_rate = 44100  # CD
     duration = 0.05
+    hz = 440
 
     sounds = []
     for i in range(len(elements)):
-        fz = 440 + pow(i, 2)
+        fz = hz + pow(i, 2)
         samples = array.array("f", [math.sin(TAU * fz * sample / sample_rate)
                                     for sample in range(int(duration * sample_rate))])
         sound = pygame.mixer.Sound(buffer=samples)
@@ -222,6 +230,8 @@ while RUNNING:
                 bubble = BubbleSort(ELEMENTS)
                 bubble.finished = False
                 time = 0
+            if event.key == pygame.K_m:
+                MUTED = not MUTED
 
     if bubble.finished:
         play = False
@@ -230,7 +240,7 @@ while RUNNING:
     if play:
         start_time = pygame.time.get_ticks()
         t = bubble.step()
-        if t:
+        if t and not MUTED:
             for d in bubble.dirty_index:
                 beeps[d].play()
 
