@@ -158,8 +158,9 @@ class BubbleSort:
 
 
 pygame.init()
-pygame.mixer.init()
+
 screen = pygame.display.set_mode((H, W))
+pygame.mixer.init()
 pygame.display.set_caption("Sorting Algorithms")
 
 bubble = BubbleSort(ELEMENTS)
@@ -177,28 +178,46 @@ bar = Bar(bar_pos, screen)
 time = 0
 
 
-# beep logic
-def new_beeps(elements):
-    "Generate one sample per index"
-    volume = 0.05
-    sample_rate = 44100  # CD
-    duration = 0.05
-    hz = 440
+class Beeper:
+    bits = 16  # int16
+    sample_rate = 44100  # CD Quality
+    freq = 440  # Hz
 
-    sounds = []
-    for i in range(len(elements)):
-        fz = hz + pow(i, 2)
-        samples = array.array(
-            "f", [math.sin(TAU * fz * sample / sample_rate)
-                  for sample in range(int(duration * sample_rate))],
-        )
-        sound = pygame.mixer.Sound(buffer=samples)
-        sound.set_volume(volume)
-        sounds.append(sound)
-    return sounds
+    def __init__(self, size, duration=0.04):
+        "Generate one sample per index"
+        self.duration = duration
+        self.size = size
+        self.beeps = []
+        pygame.mixer.pre_init(self.sample_rate, self.bits)
+
+    def sin_wave(self, amp, freq, time):
+        return int(amp * math.sin(TAU * freq * time))
+
+    def wave(self, freq, duration, speaker=None):
+        amp = 2 ** (self.bits - 1) - 1  # amplitude of 32767 bits
+        sample_range = range(int(duration * self.sample_rate))
+
+        buffer = array.array("i", (0 for _ in sample_range))
+        for sample in sample_range:
+            time = sample / self.sample_rate
+            sine = self.sin_wave(amp, freq, time)
+            buffer[sample] = sine
+        return buffer
+
+    def n_note(self, i):
+        return self.freq * 2**(i/12)
+
+    def generate(self):
+        for i in range(self.size):
+            freq = self.n_note(i)
+            buffer = self.wave(freq, self.duration)
+            sound = pygame.mixer.Sound(buffer=buffer)
+            self.beeps.append(sound)
 
 
-beeps = new_beeps(ELEMENTS)
+beeper = Beeper(len(ELEMENTS))
+beeper.generate()
+
 while RUNNING:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -237,7 +256,8 @@ while RUNNING:
         t = bubble.step()
         if t and not MUTED:
             for d in bubble.dirty_index:
-                beeps[d].play()
+                # module = ELEMENTS[d]
+                beeper.beeps[d].play()
 
     # Draw
     grid.draw(bubble.elements, bubble.dirty_index, bubble.finished)
