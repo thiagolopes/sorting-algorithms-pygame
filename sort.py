@@ -73,11 +73,8 @@ class Grid:
         top = self.size.x // total
         left = self.size.y / total
 
-        width = top - 1
+        width = max(top - 1, 1)
         height = math.ceil(left) * element
-
-        if width < 1:
-            width = 1
 
         pos = pygame.Rect(index * top, self.size.y - (element * left), width, height)
         self.surface.fill(color, pos)
@@ -111,9 +108,8 @@ class BubbleSort:
         self.finished = True
         self.start_bubble()
 
-        self.step_count = 0
-
     def start_bubble(self):
+        self.step_count = 0
         self.steps_left = len(self.elements) - 1
         self.index_step = 0
         self.dirty_index = []
@@ -152,13 +148,12 @@ class BubbleSort:
         return True
 
     def finish(self):
-        self.dirty = []
+        self.dirty_index = []
         self.finished = True
 
-    def reset(self):
+    def shuffle(self):
         self.start_bubble()
         self.finished = False
-        self.step_count = 0
         random.shuffle(self.elements)
 
 
@@ -193,8 +188,10 @@ def new_beeps(elements):
     sounds = []
     for i in range(len(elements)):
         fz = hz + pow(i, 2)
-        samples = array.array("f", [math.sin(TAU * fz * sample / sample_rate)
-                                    for sample in range(int(duration * sample_rate))])
+        samples = array.array(
+            "f", [math.sin(TAU * fz * sample / sample_rate)
+                  for sample in range(int(duration * sample_rate))],
+        )
         sound = pygame.mixer.Sound(buffer=samples)
         sound.set_volume(volume)
         sounds.append(sound)
@@ -211,7 +208,7 @@ while RUNNING:
                 quit()
             if event.key == pygame.K_RETURN:
                 play = False
-                bubble.reset()
+                bubble.shuffle()
                 time = 0
             if event.key == pygame.K_SPACE:
                 play = not play
