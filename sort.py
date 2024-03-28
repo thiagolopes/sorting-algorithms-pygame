@@ -164,8 +164,6 @@ class BubbleSort:
 
 pygame.init()
 pygame.mixer.init()
-beep = pygame.mixer.Sound("beep.wav")
-beep.set_volume(0.05)
 screen = pygame.display.set_mode((H, W))
 pygame.display.set_caption("Sorting Algorithms")
 
