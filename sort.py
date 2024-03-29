@@ -15,7 +15,7 @@ TAU = math.pi * 2
 MUTED = False
 
 
-def quit():
+def shutdown():
     print(ELEMENTS)
     pygame.quit()
     sys.exit()
@@ -45,7 +45,7 @@ class Bar:
         self.surface.blit(ts, pos)
         pos += pygame.Vector2(ts.get_width() + self.margin, 0)
 
-    def draw(self, algorithm, meta, ms):
+    def draw(self, algorithm, meta, ms, muted):
         self.surface.fill("darkorchid", self.pos)
         self.surface.fill("darkmagenta", self.border)
 
@@ -53,7 +53,7 @@ class Bar:
         self.draw_next_text(algorithm, pos, "white", True)
         self.draw_next_text("- " + meta, pos, "white")
         self.draw_next_text(f"| {ms} (ms)", pos, "white")
-        if MUTED:
+        if muted:
             self.draw_next_text("|[MUTED]", pos, "white")
 
         self.screen.blit(self.surface, self.pos)
@@ -221,10 +221,10 @@ beeper.generate()
 while RUNNING:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            quit()
+            shutdown()
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_ESCAPE:
-                quit()
+                shutdown()
             if event.key == pygame.K_RETURN:
                 play = False
                 bubble.shuffle()
@@ -261,11 +261,11 @@ while RUNNING:
 
     # Draw
     grid.draw(bubble.elements, bubble.dirty_index, bubble.finished)
-    bar.draw(str(bubble), repr(bubble), time)
+    bar.draw(str(bubble), repr(bubble), time, MUTED)
 
     if start_time is not None:
         time += pygame.time.get_ticks() - start_time
 
     pygame.display.flip()
 
-quit()
+shutdown()
