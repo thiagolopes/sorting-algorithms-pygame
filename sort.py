@@ -121,7 +121,7 @@ class BubbleSort:
         return f"Finished: {self.finished} | Step count: {self.step_count} | Total: {len(self.elements)}"
 
     def step(self):
-        self.dirty_index = []
+        self.dirty_index.clear()
 
         if self.finished:
             return False
@@ -137,11 +137,11 @@ class BubbleSort:
 
         elements = self.elements
         i = self.index_step
-        il = i + 1
+        iplus = i + 1
         self.dirty_index.append(i)
-        if elements[i] > elements[il]:
-            elements[il], elements[i] = elements[i], elements[il]
-            self.dirty_index.append(il)
+        if elements[i] > elements[iplus]:
+            elements[iplus], elements[i] = elements[i], elements[iplus]
+            self.dirty_index.append(iplus)
 
         self.index_step += 1
         self.step_count += 1
@@ -182,6 +182,7 @@ class Beeper:
     bits = 16  # int16
     sample_rate = 44100  # CD Quality
     freq = 440  # Hz
+    volume = 0.05
 
     def __init__(self, size, duration=0.04):
         "Generate one sample per index"
@@ -201,11 +202,12 @@ class Beeper:
         for sample in sample_range:
             time = sample / self.sample_rate
             sine = self.sin_wave(amp, freq, time)
-            buffer[sample] = sine
+            buffer[sample] = int(sine * self.volume)
         return buffer
 
     def n_note(self, i):
-        return self.freq * 2**(i/12)
+        seed = math.pi
+        return self.freq + (i * seed)
 
     def generate(self):
         for i in range(self.size):
