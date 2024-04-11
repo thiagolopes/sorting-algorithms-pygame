@@ -106,9 +106,6 @@ class BubbleSort:
     def __init__(self, elements):
         self.elements = elements
         self.finished = True
-        self.start_bubble()
-
-    def start_bubble(self):
         self.step_count = 0
         self.steps_left = len(self.elements) - 1
         self.index_step = 0
@@ -151,10 +148,33 @@ class BubbleSort:
         self.dirty_index = []
         self.finished = True
 
-    def shuffle(self):
-        self.start_bubble()
-        self.finished = False
-        random.shuffle(self.elements)
+
+class Interactions:
+    def __init__(self):
+        self.actions = ["quit", "shuffle", "pause", "next_step", "restart", "randomize", "mute"]
+
+    def start_tick(self):
+        for action in self.actions:
+            setattr(self, action, False)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.quit = True
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_ESCAPE:
+                    self.quit = True
+                if event.key == pygame.K_RETURN:
+                    self.shuffle = True
+                if event.key == pygame.K_SPACE:
+                    self.mute = True
+                if event.key == pygame.K_n:
+                    self.next_step = True
+                if event.key == pygame.K_BACKSPACE:
+                    self.restart = True
+                if event.key == pygame.K_r:
+                    self.randomize = True
+                if event.key == pygame.K_m:
+                    self.mute = True
 
 
 pygame.init()
@@ -163,7 +183,7 @@ screen = pygame.display.set_mode((H, W))
 pygame.mixer.init()
 pygame.display.set_caption("Sorting Algorithms")
 
-bubble = BubbleSort(ELEMENTS)
+algorithm = BubbleSort(ELEMENTS)
 play = False
 
 bar_size = 24
@@ -220,50 +240,53 @@ class Beeper:
 beeper = Beeper(len(ELEMENTS))
 beeper.generate()
 
-while RUNNING:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            shutdown()
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_ESCAPE:
-                shutdown()
-            if event.key == pygame.K_RETURN:
-                play = False
-                bubble.shuffle()
-                time = 0
-            if event.key == pygame.K_SPACE:
-                play = not play
-            if event.key == pygame.K_n:
-                bubble.step()
-            if event.key == pygame.K_BACKSPACE:
-                play = False
-                ELEMENTS = list(range(START, TOTAL))
-                bubble = BubbleSort(ELEMENTS)
-                time = 0
-            if event.key == pygame.K_r:
-                play = False
-                ELEMENTS = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
-                bubble = BubbleSort(ELEMENTS)
-                bubble.finished = False
-                time = 0
-            if event.key == pygame.K_m:
-                MUTED = not MUTED
+interactions = Interactions()
 
-    if bubble.finished:
+while RUNNING:
+    interactions.start_tick()
+
+    if interactions.quit:
+        shutdown()
+    if interactions.shuffle:
+        play = False
+        ELEMENTS = list(range(START, TOTAL))
+        random.shuffle(ELEMENTS)
+        algorithm = BubbleSort(ELEMENTS)
+        algorithm.finished = False
+        time = 0
+    if interactions.mute:
+        play = not play
+    if interactions.next_step:
+        algorithm.step()
+    if interactions.restart:
+        play = False
+        ELEMENTS = list(range(START, TOTAL))
+        algorithm = BubbleSort(ELEMENTS)
+        time = 0
+    if interactions.randomize:
+        play = False
+        ELEMENTS = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
+        algorithm = BubbleSort(ELEMENTS)
+        algorithm.finished = False
+        time = 0
+    if interactions.mute:
+        MUTED = not MUTED
+
+    if algorithm.finished:
         play = False
 
     start_time = None
     if play:
         start_time = pygame.time.get_ticks()
-        t = bubble.step()
+        t = algorithm.step()
         if t and not MUTED:
-            for d in bubble.dirty_index:
-                # module = ELEMENTS[d]
-                beeper.beeps[d].play()
+            for d in algorithm.dirty_index:
+                module = ELEMENTS[d]
+                beeper.beeps[module].play()
 
     # Draw
-    grid.draw(bubble.elements, bubble.dirty_index, bubble.finished)
-    bar.draw(str(bubble), repr(bubble), time, MUTED)
+    grid.draw(algorithm.elements, algorithm.dirty_index, algorithm.finished)
+    bar.draw(str(algorithm), repr(algorithm), time, MUTED)
 
     if start_time is not None:
         time += pygame.time.get_ticks() - start_time
