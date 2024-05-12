@@ -295,8 +295,6 @@ while True:
         engine.reset_timer()
     if interactions.pause:
         engine.toggle_play()
-    if interactions.next_step:
-        algorithm.step()
     if interactions.restart:
         engine.play = False
         ELEMENTS = list(range(START, TOTAL))
@@ -315,10 +313,11 @@ while True:
         engine.play = False
 
     engine.start_tick()
-    if engine.play:
+    # TODO move logic to engine
+    if engine.play or interactions.next_step:
         t = algorithm.step()
         if not engine.mute and t:
-            beeper[algorithm.dirty_index[0]].play()
+            beeper[algorithm.dirty_index[-1]].play()
 
     # Draw
     grid.draw(algorithm.elements, algorithm.dirty_index, algorithm.finished)
