@@ -70,7 +70,7 @@ class Grid:
         self.surface = pygame.Surface(self.size)
         self.last_dirty_indexes = []
 
-    def draw_index(self, index, total, element, color):
+    def draw_column(self, index, total, element, color):
         top = self.size.x // total
         left = self.size.y / total
 
@@ -80,26 +80,28 @@ class Grid:
         pos = pygame.Rect(index * top, self.size.y - (element * left), width, height)
         self.surface.fill(color, pos)
 
-    def draw_clear_last_indexes(self, elements):
-        for ld in self.last_dirty_indexes:
-            self.draw_index(ld, len(elements), elements[ld], "white")
+    def draw_dirties(self, elements, dirties):
+        for index in self.last_dirty_indexes:
+            self.draw_column(index, len(elements), elements[index], "white")
+
+        for d in dirties:
+            self.draw_column(d, len(elements), len(elements), "black")
+            self.draw_column(d, len(elements), elements[d], "red")
+        self.last_dirty_indexes = dirties.copy()
+
+    def draw_full(self, elements, color):
+        self.surface.fill("black")
+        for column, element in enumerate(elements):
+            self.draw_column(column, len(elements), element, color)
 
     def draw(self, elements, dirty_index, finished):
-        self.draw_clear_last_indexes(elements)
-
         if dirty_index:
-            for d in dirty_index:
-                self.draw_index(d, len(elements), len(elements), "black")
-                self.draw_index(d, len(elements), elements[d], "red")
-            self.last_dirty_indexes = dirty_index.copy()
+            self.draw_dirties(elements, dirty_index)
         else:
-            self.surface.fill("black")
-            for i, element in enumerate(elements):
-                color = "white"
-                if finished:
-                    color = "green"
-                self.draw_index(i, len(elements), element, color)
-
+            color = "white"
+            if finished:
+                color = "green"
+            self.draw_full(elements, color)
         self.screen.blit(self.surface, self.pos)
 
 
@@ -315,9 +317,8 @@ while True:
     engine.start_tick()
     if engine.play:
         t = algorithm.step()
-        if not engine.mute:
-            for index in algorithm.dirty_index:
-                beeper[index].play()
+        if not engine.mute and t:
+            beeper[algorithm.dirty_index[0]].play()
 
     # Draw
     grid.draw(algorithm.elements, algorithm.dirty_index, algorithm.finished)
