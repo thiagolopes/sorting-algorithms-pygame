@@ -5,35 +5,34 @@ import sys
 
 import pygame
 
-W = 780
-H = 1280
-RUNNING = True
+HEIGHT = 1280
+WIDTH = 780
+TAU = math.pi * 2
 START = 0
 TOTAL = 128
+BAR_SIZE = 24
 ELEMENTS = list(range(START, TOTAL))
-TAU = math.pi * 2
-MUTED = False
-
-
-def shutdown():
-    print(ELEMENTS)
-    pygame.quit()
-    sys.exit()
 
 
 class Bar:
-    def __init__(self, pos, screen):
-        self.pos = pos
+    init_pos = 0
+    border_size = 2
+
+    def __init__(self, size, screen):
+        self.size = size
+        self.margin = 8
         self.screen = screen
-        self.surface = pygame.Surface(pygame.Vector2(pos.w, pos.h))
+        self.pos = pygame.Rect(self.init_pos, self.init_pos, screen.get_width(), size)
         self.text = pygame.font.SysFont("Monospace", 18, False)
         self.textb = pygame.font.SysFont("Monospace", 18, True)
-
-        border_size = 2
-        self.border = pygame.Rect(pos.x + border_size, pos.y + border_size,
-                                  pos.width - (border_size * 2), pos.height - (border_size * 2))
-        self.margin = 8
-        self.init_pos = pygame.Vector2(self.margin, border_size)
+        self.border = pygame.Rect(
+            self.pos.x + self.border_size,
+            self.pos.y + self.border_size,
+            self.pos.width - (self.border_size * 2),
+            self.pos.height - (self.border_size * 2),
+        )
+        self.init_pos = pygame.Vector2(self.margin, self.border_size)
+        self.surface = pygame.Surface(pygame.Vector2(self.pos.w, self.pos.h))
 
     def draw_next_text(self, text, pos, color, bold=False):
         if bold:
@@ -46,6 +45,7 @@ class Bar:
         pos += pygame.Vector2(ts.get_width() + self.margin, 0)
 
     def draw(self, algorithm, meta, ms, muted):
+        # TODO avoid redraw
         self.surface.fill("darkorchid", self.pos)
         self.surface.fill("darkmagenta", self.border)
 
@@ -62,9 +62,10 @@ class Bar:
 class Grid:
     margin = 1
 
-    def __init__(self, pos, size, screen):
-        self.pos = pos
-        self.size = size
+    def __init__(self, padding, screen):
+        self.padding = padding
+        self.pos = pygame.Vector2(0, padding)
+        self.size = pygame.Vector2(screen.get_width(), screen.get_height() - padding)
         self.screen = screen
         self.surface = pygame.Surface(self.size)
         self.last_dirty_indexes = []
@@ -166,7 +167,7 @@ class Interactions:
                 if event.key == pygame.K_RETURN:
                     self.shuffle = True
                 if event.key == pygame.K_SPACE:
-                    self.mute = True
+                    self.pause = True
                 if event.key == pygame.K_n:
                     self.next_step = True
                 if event.key == pygame.K_BACKSPACE:
@@ -175,27 +176,6 @@ class Interactions:
                     self.randomize = True
                 if event.key == pygame.K_m:
                     self.mute = True
-
-
-pygame.init()
-
-screen = pygame.display.set_mode((H, W))
-pygame.mixer.init()
-pygame.display.set_caption("Sorting Algorithms")
-
-algorithm = BubbleSort(ELEMENTS)
-play = False
-
-bar_size = 24
-grid_gap = 10
-grid_pos = pygame.Vector2(0, bar_size)
-grid_size = pygame.Vector2(screen.get_width(), screen.get_height() - bar_size)
-grid = Grid(grid_pos, grid_size, screen)
-
-bar_pos = pygame.Rect(0, 0, screen.get_width(), bar_size)
-bar = Bar(bar_pos, screen)
-
-time = 0
 
 
 class Beeper:
@@ -209,10 +189,14 @@ class Beeper:
         self.duration = duration
         self.size = size
         self.beeps = []
+        pygame.mixer.init()
         pygame.mixer.pre_init(self.sample_rate, self.bits)
 
-    def sin_wave(self, amp, freq, time):
-        return int(amp * math.sin(TAU * freq * time))
+    def __getitem__(self, index):
+        return self.beeps[index]
+
+    def sin_wave(self, amp, freq, t):
+        return int(amp * math.sin(TAU * freq * t))
 
     def wave(self, freq, duration, speaker=None):
         amp = 2 ** (self.bits - 1) - 1  # amplitude of 32767 bits
@@ -220,8 +204,8 @@ class Beeper:
 
         buffer = array.array("i", (0 for _ in sample_range))
         for sample in sample_range:
-            time = sample / self.sample_rate
-            sine = self.sin_wave(amp, freq, time)
+            time_len = sample / self.sample_rate
+            sine = self.sin_wave(amp, freq, time_len)
             buffer[sample] = int(sine * self.volume)
         return buffer
 
@@ -237,60 +221,109 @@ class Beeper:
             self.beeps.append(sound)
 
 
+class Engine:
+    def __init__(self, height, width):
+        self.mute = False
+        self.play = False
+        self.time = 0
+        self.total_time = 0
+        self._frame_time = 0
+
+        pygame.init()
+        self.screen = pygame.display.set_mode((height, width))
+
+    @property
+    def title(self):
+        pygame.display.get_caption()
+
+    @title.setter
+    def title(self, title):
+        pygame.display.set_caption(title)
+
+    def toggle_play(self):
+        self.play = not self.play
+
+    def toggle_mute(self):
+        self.mute = not self.mute
+
+    def reset_timer(self):
+        self.time = 0
+
+    def start_tick(self):
+        if self.play:
+            self._frame_time = pygame.time.get_ticks()
+
+    def end_tick(self):
+        if self.play:
+            self.time += pygame.time.get_ticks() - self._frame_time
+            self._frame_time = 0
+
+    def end_frame(self):
+        pygame.display.flip()
+
+    def shutdown(self):
+        print(ELEMENTS)
+        pygame.quit()
+        sys.exit()
+
+
+engine = Engine(HEIGHT, WIDTH)
+engine.title = "Sorting Algorithms"
+grid = Grid(BAR_SIZE, engine.screen)
+bar = Bar(grid.padding, engine.screen)
+interactions = Interactions()
+
 beeper = Beeper(len(ELEMENTS))
 beeper.generate()
 
-interactions = Interactions()
+algorithms = [BubbleSort]
+algorithm = algorithms[0](ELEMENTS)
 
-while RUNNING:
+while True:
     interactions.start_tick()
 
     if interactions.quit:
-        shutdown()
+        engine.shutdown()
     if interactions.shuffle:
-        play = False
+        engine.play = False
         ELEMENTS = list(range(START, TOTAL))
         random.shuffle(ELEMENTS)
         algorithm = BubbleSort(ELEMENTS)
         algorithm.finished = False
-        time = 0
-    if interactions.mute:
-        play = not play
+        engine.reset_timer()
+    if interactions.pause:
+        engine.toggle_play()
     if interactions.next_step:
         algorithm.step()
     if interactions.restart:
-        play = False
+        engine.play = False
         ELEMENTS = list(range(START, TOTAL))
         algorithm = BubbleSort(ELEMENTS)
-        time = 0
+        engine.reset_timer()
     if interactions.randomize:
-        play = False
+        engine.play = False
         ELEMENTS = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
         algorithm = BubbleSort(ELEMENTS)
         algorithm.finished = False
-        time = 0
+        engine.reset_timer()
     if interactions.mute:
-        MUTED = not MUTED
+        engine.toggle_mute()
 
     if algorithm.finished:
-        play = False
+        engine.play = False
 
-    start_time = None
-    if play:
-        start_time = pygame.time.get_ticks()
+    engine.start_tick()
+    if engine.play:
         t = algorithm.step()
-        if t and not MUTED:
-            for d in algorithm.dirty_index:
-                module = ELEMENTS[d]
-                beeper.beeps[module].play()
+        if not engine.mute:
+            for index in algorithm.dirty_index:
+                beeper[index].play()
 
     # Draw
     grid.draw(algorithm.elements, algorithm.dirty_index, algorithm.finished)
-    bar.draw(str(algorithm), repr(algorithm), time, MUTED)
+    bar.draw(str(algorithm), repr(algorithm), engine.time, engine.mute)
 
-    if start_time is not None:
-        time += pygame.time.get_ticks() - start_time
+    engine.end_tick()
+    engine.end_frame()
 
-    pygame.display.flip()
-
-shutdown()
+engine.shutdown()
