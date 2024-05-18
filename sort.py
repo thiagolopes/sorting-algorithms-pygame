@@ -6,22 +6,21 @@ from contextlib import nullcontext
 
 import pygame
 
-HEIGHT = 1280
-WIDTH = 780
+HEIGHT = 780
+WIDTH = 1280
 TAU = math.pi * 2
 TOTAL = 128
 BAR_SIZE = 24
 
 
 class Bar:
-    init_pos = 0
     border_size = 2
 
-    def __init__(self, size, screen):
+    def __init__(self, size, screen, pos=(0, 0)):
         self.size = size
         self.margin = 8
         self.screen = screen
-        self.pos = pygame.Rect(self.init_pos, self.init_pos, screen.get_width(), size)
+        self.pos = pygame.Rect(pos[0], pos[1], screen.get_width(), size)
         self.text = pygame.font.SysFont("Monospace", 18, False)
         self.textb = pygame.font.SysFont("Monospace", 18, True)
         self.border = pygame.Rect(
@@ -30,8 +29,11 @@ class Bar:
             self.pos.width - (self.border_size * 2),
             self.pos.height - (self.border_size * 2),
         )
-        self.init_pos = pygame.Vector2(self.margin, self.border_size)
         self.surface = pygame.Surface(pygame.Vector2(self.pos.w, self.pos.h))
+
+        # red is border
+        # darkmagenta is inner
+        # text_color is green
 
     def draw_next_text(self, text, pos, color, bold=False):
         if bold:
@@ -39,39 +41,40 @@ class Bar:
         else:
             text_render = self.text.render
 
-        ts = text_render(text, True, color)
-        self.surface.blit(ts, pos)
-        pos += pygame.Vector2(ts.get_width() + self.margin, 0)
+        text_image = text_render(text, True, color)
+        self.surface.blit(text_image, pos)
+        pos += pygame.Vector2(text_image.get_width() + self.margin, 0)
 
-    def draw(self, algorithm, meta, ms, muted):
-        # TODO avoid redraw
-        self.surface.fill("darkorchid", self.pos)
-        self.surface.fill("darkmagenta", self.border)
+    def draw(self, *texts):
+        # TODO avoid redraw - BUG
+        self.surface.fill("darkmagenta")
 
-        pos = self.init_pos.copy()
-        self.draw_next_text(algorithm, pos, "white", True)
-        self.draw_next_text("- " + meta, pos, "white")
-        self.draw_next_text(f"| {ms} (ms)", pos, "white")
-        if muted:
-            self.draw_next_text("|[MUTED]", pos, "white")
+        accum = pygame.Vector2(self.margin, self.border_size)
+        text = " - ".join(texts)
+        self.draw_next_text(text, accum, "white", True)
 
         self.screen.blit(self.surface, self.pos)
 
 
+# TODO maybe implement draw event - as observer
 class Grid:
     margin = 1
 
-    def __init__(self, padding, screen):
-        self.padding = padding
-        self.pos = pygame.Vector2(0, padding)
-        self.size = pygame.Vector2(screen.get_width(), screen.get_height() - padding)
+    def __init__(self, screen, padding_top, padding_bottom=0):
+        self.pos = pygame.Vector2(0, padding_top)
+        self.size = pygame.Vector2(screen.get_width(), screen.get_height() - padding_top - padding_bottom)
         self.screen = screen
         self.surface = pygame.Surface(self.size)
         self.last_dirty_indexes = []
+        # TODO move to theme
+        # blue is background
+        # white is idle
+        # red is touched
+        # green finished
 
-    def draw_column(self, index, total, element, color):
-        top = self.size.x // total
-        left = self.size.y / total
+    def draw_column(self, index, height, element, color):
+        top = self.size.x // height
+        left = self.size.y / height
 
         width = max(top - 1, 1)
         height = math.ceil(left) * element
@@ -84,12 +87,12 @@ class Grid:
             self.draw_column(index, len(elements), elements[index], "white")
 
         for d in dirties:
-            self.draw_column(d, len(elements), len(elements), "black")
+            self.draw_column(d, len(elements), len(elements), "blue")
             self.draw_column(d, len(elements), elements[d], "red")
         self.last_dirty_indexes = dirties.copy()
 
     def draw_full(self, elements, color):
-        self.surface.fill("black")
+        self.surface.fill("blue")
         for column, element in enumerate(elements):
             self.draw_column(column, len(elements), element, color)
 
@@ -160,6 +163,19 @@ class Event:
     RESTART = (pygame.KEYDOWN, pygame.K_BACKSPACE)
     RANDOMIZE = (pygame.KEYDOWN, pygame.K_r)
     MUTE = (pygame.KEYDOWN, pygame.K_m)
+
+    @classmethod
+    def manual(cls):
+        manual_itens = {"PAUSE": "space", "SHUFFLE": "enter", "RESTART": "backspace"}
+        ignore = ["QUIT", "ESC"]
+        attrs = (name for name in vars(cls).keys() if name.isupper() and name not in ignore)
+        manual = []
+        for attr in attrs:
+            if attr in manual_itens.keys():
+                manual.append("[{}]{}".format(manual_itens[attr], attr.lower()))
+            else:
+                manual.append("[{}]{}".format(attr[0].lower(), attr[1:].lower()))
+        return " ".join(manual)
 
     def get(self):
         for event in pygame.event.get():
@@ -246,7 +262,7 @@ class Timer:
 class Engine:
     def __init__(self, height, width, array_len, timer):
         pygame.init()
-        self.screen = pygame.display.set_mode((height, width))
+        self.screen = pygame.display.set_mode((width, height))
         self.mute = False
         self.play = False
         self.algorithms = []
@@ -308,7 +324,7 @@ class Engine:
         self.mute = not self.mute
 
     def end_frame(self):
-        pygame.display.flip()
+        pygame.display.update()
 
     def shutdown(self):
         print(self.algorithm.elements)
@@ -329,21 +345,22 @@ engine.title = "Sorting Algorithms"
 engine.add_algorithm(BubbleSort)
 
 bar = Bar(BAR_SIZE, engine.screen)
-grid = Grid(BAR_SIZE, engine.screen)
+bar_bottom = Bar(BAR_SIZE, engine.screen, (0, HEIGHT - BAR_SIZE))
+grid = Grid(engine.screen, BAR_SIZE, BAR_SIZE)
 event = Event()
 
 beeper_time = Timer("generate beeps")
 # beeper_time2 = Timer("generate beeps 2")
+# beeper = Beeper(engine.array_len, engine.array_len - int(engine.array_len / 2))
+# beeper = Beeper(engine.array_len - int(engine.array_len / 2))
+# beeper.generate()
+
 with beeper_time:
-    # beeper = Beeper(engine.array_len, engine.array_len - int(engine.array_len / 2))
     beeper = Beeper(engine.array_len)
     beeper.generate()
 print(str(beeper_time))
 
-# with beeper_time2:
-#     beeper = Beeper(engine.array_len - int(engine.array_len / 2))
-#     beeper.generate()
-# print(str(beeper_time2))
+event_manual = event.manual()
 
 while True:
     run_step = False
@@ -364,14 +381,14 @@ while True:
             case event.NEXT_STEP:
                 run_step = True
 
+    # TODO split timer for algorithm and all draws
     with engine.time_it(force=run_step):
         t, algorithm = engine.run(force=run_step)
         if not engine.mute and t:
-            beeper[engine.algorithm.dirty_index[-1]].play()
-
+            beeper[algorithm.dirty_index[-1]].play()
         grid.draw(algorithm.elements, algorithm.dirty_index, engine.finished)
-        bar.draw(str(algorithm), repr(algorithm), engine.timer.total, engine.mute)
-
+        bar.draw(str(algorithm), repr(algorithm), f"{engine.timer.total}ms", ("[MUTED]" if engine.mute else ""))
+        bar_bottom.draw(event_manual)
     engine.end_frame()
 
 engine.shutdown()
