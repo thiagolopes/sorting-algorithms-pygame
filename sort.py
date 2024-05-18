@@ -361,6 +361,7 @@ with beeper_time:
 print(str(beeper_time))
 
 event_manual = event.manual()
+bar_bottom.draw(event_manual)
 
 while True:
     run_step = False
@@ -388,7 +389,6 @@ while True:
             beeper[algorithm.dirty_index[-1]].play()
         grid.draw(algorithm.elements, algorithm.dirty_index, engine.finished)
         bar.draw(str(algorithm), repr(algorithm), f"{engine.timer.total}ms", ("[MUTED]" if engine.mute else ""))
-        bar_bottom.draw(event_manual)
     engine.end_frame()
 
 engine.shutdown()
