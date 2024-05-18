@@ -162,8 +162,7 @@ class Event:
     RANDOMIZE = (pygame.KEYDOWN, pygame.K_r)
     MUTE = (pygame.KEYDOWN, pygame.K_m)
 
-    @classmethod
-    def get(cls):
+    def get(self):
         for event in pygame.event.get():
             if hasattr(event, "key"):
                 key = event.key
