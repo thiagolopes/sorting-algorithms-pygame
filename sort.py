@@ -1,28 +1,31 @@
 import array
 import math
-import random
 import sys
 from contextlib import nullcontext
+from random import SystemRandom
 
 import pygame
 
-HEIGHT = 780
-WIDTH = 1280
+HEIGHT = 700
+WIDTH = 700
 TAU = math.pi * 2
 TOTAL = 128
 BAR_SIZE = 24
 
+random = SystemRandom()
+
 
 class Bar:
     border_size = 2
+    font_size = 14
 
     def __init__(self, size, screen, pos=(0, 0)):
         self.size = size
         self.margin = 8
         self.screen = screen
         self.pos = pygame.Rect(pos[0], pos[1], screen.get_width(), size)
-        self.text = pygame.font.SysFont("Monospace", 18, False)
-        self.textb = pygame.font.SysFont("Monospace", 18, True)
+        self.text = pygame.font.SysFont("Monospace", self.font_size, False)
+        self.textb = pygame.font.SysFont("Monospace", self.font_size, True)
         self.border = pygame.Rect(
             self.pos.x + self.border_size,
             self.pos.y + self.border_size,
@@ -73,7 +76,7 @@ class Grid:
         # green finished
 
     def draw_column(self, index, height, element, color):
-        top = self.size.x // height
+        top = self.size.x / height
         left = self.size.y / height
 
         width = max(top - 1, 1)
@@ -317,12 +320,6 @@ class Engine:
         self.algorithm = algorithm
         self.timer.reset()
 
-    def toggle_play(self):
-        self.play = not self.play
-
-    def toggle_mute(self):
-        self.mute = not self.mute
-
     def end_frame(self):
         pygame.display.update()
 
@@ -372,13 +369,13 @@ while True:
             case event.SHUFFLE:
                 engine.reset(shuffle=True)
             case event.PAUSE:
-                engine.toggle_play()
+                engine.play = not engine.play
             case event.RESTART:
                 engine.reset()
             case event.RANDOMIZE:
                 engine.reset(randomize=True)
             case event.MUTE:
-                engine.toggle_mute()
+                engine.mute = not engine.mute
             case event.NEXT_STEP:
                 run_step = True
 
@@ -387,6 +384,7 @@ while True:
         t, algorithm = engine.run(force=run_step)
         if not engine.mute and t:
             beeper[algorithm.dirty_index[-1]].play()
+
         grid.draw(algorithm.elements, algorithm.dirty_index, engine.finished)
         bar.draw(str(algorithm), repr(algorithm), f"{engine.timer.total}ms", ("[MUTED]" if engine.mute else ""))
     engine.end_frame()
