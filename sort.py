@@ -152,32 +152,24 @@ class BubbleSort:
         self.finished = True
 
 
-class Interactions:
-    def __init__(self):
-        self.actions = ["quit", "shuffle", "pause", "next_step", "restart", "randomize", "mute"]
+class Event:
+    QUIT = (pygame.QUIT, None)
+    ESC = (pygame.KEYDOWN, pygame.K_ESCAPE)
+    SHUFFLE = (pygame.KEYDOWN, pygame.K_RETURN)
+    PAUSE = (pygame.KEYDOWN, pygame.K_SPACE)
+    NEXT_STEP = (pygame.KEYDOWN, pygame.K_n)
+    RESTART = (pygame.KEYDOWN, pygame.K_BACKSPACE)
+    RANDOMIZE = (pygame.KEYDOWN, pygame.K_r)
+    MUTE = (pygame.KEYDOWN, pygame.K_m)
 
-    def start_tick(self):
-        for action in self.actions:
-            setattr(self, action, False)
-
+    @classmethod
+    def get(cls):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.quit = True
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_ESCAPE:
-                    self.quit = True
-                if event.key == pygame.K_RETURN:
-                    self.shuffle = True
-                if event.key == pygame.K_SPACE:
-                    self.pause = True
-                if event.key == pygame.K_n:
-                    self.next_step = True
-                if event.key == pygame.K_BACKSPACE:
-                    self.restart = True
-                if event.key == pygame.K_r:
-                    self.randomize = True
-                if event.key == pygame.K_m:
-                    self.mute = True
+            if hasattr(event, "key"):
+                key = event.key
+            else:
+                key = None
+            yield (event.type, key)
 
 
 class Beeper:
@@ -223,14 +215,29 @@ class Beeper:
             self.beeps.append(sound)
 
 
+class Timer:
+    def __init__(self, engine):
+        self.total = 0
+        self._frame_time = 0
+        self.engine = engine
+
+    def reset_timer(self):
+        self.total = 0
+
+    def start_tick(self):
+        if self.engine.play:
+            self._frame_time = pygame.time.get_ticks()
+
+    def end_tick(self):
+        if self.engine.play:
+            self.total += pygame.time.get_ticks() - self._frame_time
+            self._frame_time = 0
+
+
 class Engine:
     def __init__(self, height, width):
         self.mute = False
         self.play = False
-        self.time = 0
-        self.total_time = 0
-        self._frame_time = 0
-
         pygame.init()
         self.screen = pygame.display.set_mode((height, width))
 
@@ -248,18 +255,6 @@ class Engine:
     def toggle_mute(self):
         self.mute = not self.mute
 
-    def reset_timer(self):
-        self.time = 0
-
-    def start_tick(self):
-        if self.play:
-            self._frame_time = pygame.time.get_ticks()
-
-    def end_tick(self):
-        if self.play:
-            self.time += pygame.time.get_ticks() - self._frame_time
-            self._frame_time = 0
-
     def end_frame(self):
         pygame.display.flip()
 
@@ -273,7 +268,6 @@ engine = Engine(HEIGHT, WIDTH)
 engine.title = "Sorting Algorithms"
 grid = Grid(BAR_SIZE, engine.screen)
 bar = Bar(grid.padding, engine.screen)
-interactions = Interactions()
 
 beeper = Beeper(len(ELEMENTS))
 beeper.generate()
@@ -281,49 +275,54 @@ beeper.generate()
 algorithms = [BubbleSort]
 algorithm = algorithms[0](ELEMENTS)
 
+event = Event()
+loop_timer = Timer(engine)
+
 while True:
-    interactions.start_tick()
+    loop_timer.start_tick()
 
-    if interactions.quit:
-        engine.shutdown()
-    if interactions.shuffle:
-        engine.play = False
-        ELEMENTS = list(range(START, TOTAL))
-        random.shuffle(ELEMENTS)
-        algorithm = BubbleSort(ELEMENTS)
-        algorithm.finished = False
-        engine.reset_timer()
-    if interactions.pause:
-        engine.toggle_play()
-    if interactions.restart:
-        engine.play = False
-        ELEMENTS = list(range(START, TOTAL))
-        algorithm = BubbleSort(ELEMENTS)
-        engine.reset_timer()
-    if interactions.randomize:
-        engine.play = False
-        ELEMENTS = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
-        algorithm = BubbleSort(ELEMENTS)
-        algorithm.finished = False
-        engine.reset_timer()
-    if interactions.mute:
-        engine.toggle_mute()
+    for ev in event.get():
+        match ev:
+            case event.ESC | event.QUIT:
+                engine.shutdown()
+            case event.SHUFFLE:
+                engine.play = False
+                ELEMENTS = list(range(START, TOTAL))
+                random.shuffle(ELEMENTS)
+                algorithm = BubbleSort(ELEMENTS)
+                algorithm.finished = False
+                loop_timer.reset_timer()
+            case event.PAUSE:
+                engine.toggle_play()
+            case event.RESTART:
+                engine.play = False
+                ELEMENTS = list(range(START, TOTAL))
+                algorithm = BubbleSort(ELEMENTS)
+                loop_timer.reset_timer()
+            case event.RANDOMIZE:
+                engine.play = False
+                ELEMENTS = [random.randint(START, TOTAL) for _ in range(START, TOTAL)]
+                algorithm = BubbleSort(ELEMENTS)
+                algorithm.finished = False
+                loop_timer.reset_timer()
+            case event.MUTE:
+                engine.toggle_mute()
+            case event.NEXT_STEP:
+                t = algorithm.step()
+                if not engine.mute and t:
+                    beeper[algorithm.dirty_index[-1]].play()
 
-    if algorithm.finished:
-        engine.play = False
-
-    engine.start_tick()
-    # TODO move logic to engine
-    if engine.play or interactions.next_step:
+    if engine.play:
         t = algorithm.step()
         if not engine.mute and t:
             beeper[algorithm.dirty_index[-1]].play()
+        if algorithm.finished:
+            engine.play = False
 
-    # Draw
     grid.draw(algorithm.elements, algorithm.dirty_index, algorithm.finished)
-    bar.draw(str(algorithm), repr(algorithm), engine.time, engine.mute)
+    bar.draw(str(algorithm), repr(algorithm), loop_timer.total, engine.mute)
 
-    engine.end_tick()
+    loop_timer.end_tick()
     engine.end_frame()
 
 engine.shutdown()
