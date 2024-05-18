@@ -2,16 +2,15 @@ import array
 import math
 import random
 import sys
+from contextlib import nullcontext
 
 import pygame
 
 HEIGHT = 1280
 WIDTH = 780
 TAU = math.pi * 2
-START = 0
 TOTAL = 128
 BAR_SIZE = 24
-ELEMENTS = list(range(START, TOTAL))
 
 
 class Bar:
@@ -175,7 +174,7 @@ class Beeper:
     bits = 16  # int16
     sample_rate = 44100  # CD Quality
     freq = 440  # Hz
-    volume = 0.05
+    volume = 0.1
 
     def __init__(self, size, duration=0.04):
         "Generate one sample per index"
@@ -215,26 +214,30 @@ class Beeper:
 
 
 class Timer:
-    def __init__(self, engine):
+    def __init__(self):
         self.total = 0
         self._frame_time = 0
-        self.engine = engine
 
-    def reset_timer(self):
+    def reset(self):
         self.total = 0
 
     def start_tick(self):
-        if self.engine.play:
-            self._frame_time = pygame.time.get_ticks()
+        self._frame_time = pygame.time.get_ticks()
 
     def end_tick(self):
-        if self.engine.play:
-            self.total += pygame.time.get_ticks() - self._frame_time
-            self._frame_time = 0
+        self.total += pygame.time.get_ticks() - self._frame_time
+        self._frame_time = 0
+
+    def __enter__(self):
+        self.start_tick()
+        return self
+
+    def __exit__(self, *exc):
+        self.end_tick()
 
 
 class Engine:
-    def __init__(self, height, width, array_len):
+    def __init__(self, height, width, array_len, timer):
         pygame.init()
         self.screen = pygame.display.set_mode((height, width))
         self.mute = False
@@ -242,6 +245,7 @@ class Engine:
         self.algorithms = []
         self.algorithm = None
         self.array_len = array_len
+        self.timer = timer
 
     @property
     def title(self):
@@ -263,6 +267,11 @@ class Engine:
     def finished(self):
         return self.algorithm.finished
 
+    def time_it(self, force):
+        if self.play or force:
+            return self.timer
+        return nullcontext()
+
     def add_algorithm(self, algorithm):
         self.algorithms.append(algorithm)
         if not self.algorithm:
@@ -283,6 +292,7 @@ class Engine:
         algorithm = self.algorithm_class(elements)
         algorithm.finished = finished
         self.algorithm = algorithm
+        self.timer.reset()
 
     def toggle_play(self):
         self.play = not self.play
@@ -298,25 +308,29 @@ class Engine:
         pygame.quit()
         sys.exit(0)
 
-    def step(self):
-        t = self.algorithm.step()
-        if self.algorithm.finished:
-            self.play = False
-        return t
+    def run(self, force=False):
+        t = False
+        if self.play or force:
+            t = self.algorithm.step()
+            if self.algorithm.finished:
+                self.play = False
+        return t, self.algorithm
 
 
-engine = Engine(HEIGHT, WIDTH, TOTAL)
+engine = Engine(HEIGHT, WIDTH, TOTAL, Timer())
 engine.title = "Sorting Algorithms"
 engine.add_algorithm(BubbleSort)
 
+bar = Bar(BAR_SIZE, engine.screen)
 grid = Grid(BAR_SIZE, engine.screen)
-bar = Bar(grid.padding, engine.screen)
 event = Event()
 
-beeper = Beeper(engine.array_len)
-beeper.generate()
+beeper_time = Timer()
+with beeper_time:
+    beeper = Beeper(engine.array_len)
+    beeper.generate()
+print(f"total time to generate all beeps: [{beeper_time.total} ms]")
 
-loop_timer = Timer(engine)
 while True:
     run_step = False
     for ev in event.get():
@@ -325,29 +339,24 @@ while True:
                 engine.shutdown()
             case event.SHUFFLE:
                 engine.reset(shuffle=True)
-                loop_timer.reset_timer()
             case event.PAUSE:
                 engine.toggle_play()
             case event.RESTART:
                 engine.reset()
-                loop_timer.reset_timer()
             case event.RANDOMIZE:
                 engine.reset(randomize=True)
-                loop_timer.reset_timer()
             case event.MUTE:
                 engine.toggle_mute()
             case event.NEXT_STEP:
                 run_step = True
 
-    loop_timer.start_tick()
-    if engine.play or run_step:
-        t = engine.step()
+    with engine.time_it(force=run_step):
+        t, algorithm = engine.run(force=run_step)
         if not engine.mute and t:
             beeper[engine.algorithm.dirty_index[-1]].play()
 
-    grid.draw(engine.algorithm.elements, engine.algorithm.dirty_index, engine.finished)
-    bar.draw(str(engine.algorithm), repr(engine.algorithm), loop_timer.total, engine.mute)
-    loop_timer.end_tick()
+        grid.draw(algorithm.elements, algorithm.dirty_index, engine.finished)
+        bar.draw(str(algorithm), repr(algorithm), engine.timer.total, engine.mute)
 
     engine.end_frame()
 
