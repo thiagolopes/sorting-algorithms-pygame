@@ -176,11 +176,12 @@ class Beeper:
     freq = 440  # Hz
     volume = 0.1
 
-    def __init__(self, size, duration=0.04):
+    def __init__(self, size, start=0, duration=0.04):
         "Generate one sample per index"
         self.duration = duration
         self.size = size
         self.beeps = []
+        self.start = start
         pygame.mixer.init()
         pygame.mixer.pre_init(self.sample_rate, self.bits)
 
@@ -192,7 +193,7 @@ class Beeper:
 
     def wave(self, freq, duration, speaker=None):
         amp = 2 ** (self.bits - 1) - 1  # amplitude of 32767 bits
-        sample_range = range(int(duration * self.sample_rate))
+        sample_range = range(0, int(duration * self.sample_rate))
 
         buffer = array.array("i", (0 for _ in sample_range))
         for sample in sample_range:
@@ -206,7 +207,7 @@ class Beeper:
         return self.freq + (i * seed)
 
     def generate(self):
-        for i in range(self.size):
+        for i in range(self.start, self.size):
             freq = self.n_note(i)
             buffer = self.wave(freq, self.duration)
             sound = pygame.mixer.Sound(buffer=buffer)
@@ -214,7 +215,8 @@ class Beeper:
 
 
 class Timer:
-    def __init__(self):
+    def __init__(self, title=None):
+        self.title = (title or "").title()
         self.total = 0
         self._frame_time = 0
 
@@ -227,6 +229,11 @@ class Timer:
     def end_tick(self):
         self.total += pygame.time.get_ticks() - self._frame_time
         self._frame_time = 0
+
+    def __str__(self):
+        if self.title:
+            return f"[TIMER] {self.title} took {self.total}ms"
+        return "{self.total}ms"
 
     def __enter__(self):
         self.start_tick()
@@ -325,11 +332,18 @@ bar = Bar(BAR_SIZE, engine.screen)
 grid = Grid(BAR_SIZE, engine.screen)
 event = Event()
 
-beeper_time = Timer()
+beeper_time = Timer("generate beeps")
+# beeper_time2 = Timer("generate beeps 2")
 with beeper_time:
+    # beeper = Beeper(engine.array_len, engine.array_len - int(engine.array_len / 2))
     beeper = Beeper(engine.array_len)
     beeper.generate()
-print(f"total time to generate all beeps: [{beeper_time.total} ms]")
+print(str(beeper_time))
+
+# with beeper_time2:
+#     beeper = Beeper(engine.array_len - int(engine.array_len / 2))
+#     beeper.generate()
+# print(str(beeper_time2))
 
 while True:
     run_step = False
