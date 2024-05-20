@@ -283,11 +283,9 @@ class Engine:
 
     @property
     def algorithm_class(self):
-        if self.algorithm is not None:
-            return self.algorithms[self.algorithms.index(self.algorithm.__class__)]
-        if self.algorithms:
+        if self.algorithm is None:
             return self.algorithms[0]
-        assert True, "Do not reach here, add algorithm to work"
+        return self.algorithms[self.algorithms.index(self.algorithm.__class__)]
 
     @property
     def finished(self):
