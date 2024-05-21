@@ -6,8 +6,8 @@ from random import SystemRandom
 
 import pygame
 
-HEIGHT = 700
-WIDTH = 700
+HEIGHT = 480
+WIDTH = 640
 TAU = math.pi * 2
 TOTAL = 128
 BAR_SIZE = 24
@@ -182,11 +182,7 @@ class Event:
 
     def get(self):
         for event in pygame.event.get():
-            if hasattr(event, "key"):
-                key = event.key
-            else:
-                key = None
-            yield (event.type, key)
+            yield (event.type, getattr(event, "key", None))
 
 
 class Beeper:
